@@ -1,4 +1,4 @@
-﻿import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+﻿import { BrowserRouter, HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import AppLayout       from './components/layout/AppLayout';
 import { ToastProvider } from './components/common/Toast';
 import Dashboard       from './pages/Dashboard';
@@ -12,9 +12,11 @@ import History         from './pages/History';
 import Settings        from './pages/Settings';
 
 export default function App() {
+  const Router = window.location.pathname.includes('/static/') ? HashRouter : BrowserRouter;
+
   return (
     <ToastProvider>
-      <BrowserRouter>
+      <Router>
         <Routes>
           <Route element={<AppLayout />}>
             <Route path="/"          element={<Dashboard />} />
@@ -31,7 +33,7 @@ export default function App() {
             <Route path="*"          element={<Navigate to="/" replace />} />
           </Route>
         </Routes>
-      </BrowserRouter>
+      </Router>
     </ToastProvider>
   );
 }
