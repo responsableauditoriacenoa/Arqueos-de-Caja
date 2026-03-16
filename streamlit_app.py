@@ -12,14 +12,8 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-components.html(
-    """
-    <iframe
-      src="static/index.html"
-      style="width:100%; height:92vh; border:none; border-radius:12px;"
-      allow="clipboard-read; clipboard-write"
-    ></iframe>
-    """,
+components.iframe(
+    src='/static/index.html',
     height=980,
-    scrolling=False,
+    scrolling=True,
 )
