@@ -12,7 +12,7 @@ import History         from './pages/History';
 import Settings        from './pages/Settings';
 
 export default function App() {
-  const Router = window.location.pathname.includes('/static/') ? HashRouter : BrowserRouter;
+  const Router = import.meta.env.PROD ? HashRouter : BrowserRouter;
 
   return (
     <ToastProvider>
