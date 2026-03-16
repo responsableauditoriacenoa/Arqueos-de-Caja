@@ -1,19 +1,11 @@
 import streamlit as st
-import streamlit.components.v1 as components
 
 st.set_page_config(page_title='Arqueos de Caja', layout='wide')
 
-st.markdown(
-    """
-    <style>
-    .block-container {padding: 0.5rem 0.75rem 0.75rem 0.75rem; max-width: 100% !important;}
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
-
-components.iframe(
-    src='/static/index.html',
-    height=980,
-    scrolling=True,
-)
+st.markdown("""
+<meta http-equiv="refresh" content="0; url=/static/index.html#/" />
+<div style="padding: 1rem; font-family: sans-serif;">
+    Redirigiendo a la aplicación...
+    <a href="/static/index.html#/" target="_self">Abrir ahora</a>
+</div>
+""", unsafe_allow_html=True)
