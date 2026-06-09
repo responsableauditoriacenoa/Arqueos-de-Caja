@@ -1,12 +1,21 @@
+import React from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import {
   Building2, Plus, Trash2, Save, Sliders,
-  FileText, Percent,
+  FileText, Percent, Database, RefreshCcw, Trash,
 } from 'lucide-react';
 import { useConfigStore } from '../store';
 import { useToast } from '../components/common/Toast';
 import { PageWrapper, SectionHeader, Card, Alert } from '../components/common';
 import type { AppConfig } from '../types';
+import {
+  getStorageInfo,
+  migrateLegacyLocalStorage,
+} from '../services/auditService';
+import {
+  clearLegacySnapshot,
+  hasLegacyLocalData,
+} from '../services/localStorageMigration';
 
 // ─── Section: Companies ───────────────────────────────────────────────────────
 
@@ -20,7 +29,7 @@ function CompaniesSection() {
   });
   const { fields, append, remove } = useFieldArray({ control, name: 'empresas' });
 
-  const onSubmit = (data: { empresas: { nombre: string }[] }) => {
+  const onSubmit = async (data: { empresas: { nombre: string }[] }) => {
     const empresas = Array.from(
       new Set(data.empresas.map(e => e.nombre.trim()).filter(Boolean))
     );
@@ -31,7 +40,7 @@ function CompaniesSection() {
     }
 
     const empresa = empresas.includes(config.empresa) ? config.empresa : empresas[0];
-    updateConfig({ ...config, empresas, empresa });
+    await updateConfig({ ...config, empresas, empresa });
     addToast('Empresas guardadas', 'success');
   };
 
@@ -90,7 +99,7 @@ function BranchesSection() {
   });
   const { fields, append, remove } = useFieldArray({ control, name: 'sucursales' });
 
-  const onSubmit = (data: { sucursales: AppConfig['sucursales'] }) => {
+  const onSubmit = async (data: { sucursales: AppConfig['sucursales'] }) => {
     const others = config.sucursales.filter(s => s.empresa !== config.empresa);
     const current = data.sucursales.map((s, idx) => ({
       ...s,
@@ -101,7 +110,7 @@ function BranchesSection() {
       activa: s.activa ?? true,
     })).filter(s => s.nombre);
 
-    updateConfig({ ...config, sucursales: [...others, ...current] });
+    await updateConfig({ ...config, sucursales: [...others, ...current] });
     addToast('Sucursales guardadas', 'success');
   };
 
@@ -175,12 +184,12 @@ function RubricWeightsSection() {
   const rubros = watch('rubros');
   const totalPeso = rubros.reduce((s, r) => s + (parseInt(r.peso) || 0), 0);
 
-  const onSubmit = (data: { rubros: { key: string; nombre: string; peso: string; orden: number }[] }) => {
+  const onSubmit = async (data: { rubros: { key: string; nombre: string; peso: string; orden: number }[] }) => {
     if (totalPeso !== 100) {
       addToast('Los pesos deben sumar exactamente 100%', 'error');
       return;
     }
-    updateConfig({
+    await updateConfig({
       ...config,
       rubros: data.rubros.map(r => ({
         ...r,
@@ -252,8 +261,8 @@ function GeneralSection() {
     },
   });
 
-  const onSubmit = (data: { empresa: string; pieDeInforme: string }) => {
-    updateConfig({ ...config, ...data });
+  const onSubmit = async (data: { empresa: string; pieDeInforme: string }) => {
+    await updateConfig({ ...config, ...data });
     addToast('Parámetros generales guardados', 'success');
   };
 
@@ -291,6 +300,88 @@ function GeneralSection() {
   );
 }
 
+function PersistenceSection() {
+  const { addToast } = useToast();
+  const [storageInfo, setStorageInfo] = React.useState<{ client: string; sqlitePath: string | null } | null>(null);
+  const [loadingInfo, setLoadingInfo] = React.useState(true);
+  const [migrating, setMigrating] = React.useState(false);
+  const [hasLegacyData, setHasLegacyData] = React.useState(hasLegacyLocalData());
+
+  React.useEffect(() => {
+    const load = async () => {
+      try {
+        setStorageInfo(await getStorageInfo());
+      } catch (error) {
+        addToast(error instanceof Error ? error.message : 'No se pudo consultar el almacenamiento.', 'error');
+      } finally {
+        setLoadingInfo(false);
+      }
+    };
+
+    void load();
+  }, [addToast]);
+
+  const handleMigrate = async () => {
+    setMigrating(true);
+    try {
+      const result = await migrateLegacyLocalStorage();
+      addToast(`Migración finalizada. Nuevas: ${result.created}, actualizadas: ${result.updated}.`, 'success');
+      setHasLegacyData(hasLegacyLocalData());
+    } catch (error) {
+      addToast(error instanceof Error ? error.message : 'No se pudo migrar el almacenamiento local.', 'error');
+    } finally {
+      setMigrating(false);
+    }
+  };
+
+  const handleClearLegacy = () => {
+    clearLegacySnapshot();
+    setHasLegacyData(false);
+    addToast('Datos locales heredados eliminados de este navegador.', 'info');
+  };
+
+  return (
+    <Card>
+      <div className="flex items-center gap-2 mb-4">
+        <Database size={18} className="text-brand-500" />
+        <h3 className="section-title">Persistencia Compartida</h3>
+      </div>
+
+      <div className="space-y-3 text-sm text-surface-600">
+        <p>
+          La aplicación trabaja contra una base compartida en Supabase. Esto habilita uso multiusuario desde varias computadoras sin depender de una PC encendida.
+        </p>
+        {loadingInfo ? (
+          <p className="text-surface-400">Consultando motor de almacenamiento…</p>
+        ) : (
+          <div className="rounded-xl border border-surface-200 bg-surface-50 p-4 space-y-2">
+            <p><strong>Motor activo:</strong> {storageInfo?.client ?? 'desconocido'}</p>
+            <p><strong>Archivo SQLite:</strong> {storageInfo?.sqlitePath ?? 'No aplica'}</p>
+          </div>
+        )}
+
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 space-y-3">
+          <p className="font-medium text-amber-800">Migración de datos locales del navegador</p>
+          <p className="text-amber-700">
+            Si esta PC tenía auditorías cargadas en el esquema anterior, podés fusionarlas con Supabase. Esto conviene hacerlo una vez por cada equipo que tenga datos propios.
+          </p>
+          <p className="text-amber-700">
+            Estado local: {hasLegacyData ? 'Se detectaron datos heredados en este navegador.' : 'No se detectaron datos heredados.'}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" className="btn-primary btn btn-sm" onClick={() => void handleMigrate()} disabled={!hasLegacyData || migrating}>
+              <RefreshCcw size={13} /> {migrating ? 'Migrando…' : 'Migrar datos locales a Supabase'}
+            </button>
+            <button type="button" className="btn-secondary btn btn-sm" onClick={handleClearLegacy} disabled={!hasLegacyData || migrating}>
+              <Trash size={13} /> Limpiar datos locales heredados
+            </button>
+          </div>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
 // ─── Main Settings Page ───────────────────────────────────────────────────────
 
 export default function Settings() {
@@ -308,6 +399,7 @@ export default function Settings() {
         <CompaniesSection />
         <BranchesSection key={config.empresa} />
         <RubricWeightsSection />
+        <PersistenceSection />
 
         <Alert variant="info">
           <FileText size={14} />
