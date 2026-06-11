@@ -462,7 +462,7 @@ export default function AuditEvaluation() {
 
   if (!current) return null;
 
-  const handleSaveRubric = (key: RubricKey, data: RubricFormData) => {
+  const handleSaveRubric = async (key: RubricKey, data: RubricFormData) => {
     const isCountRubric = COUNT_RUBRICS.has(key);
 
     const items = (data.items || [])
@@ -493,8 +493,12 @@ export default function AuditEvaluation() {
 
     const existing = current.rubros.filter(r => r.rubrica !== key);
     const newRubros = [...existing, detail];
-    update(current.id, { rubros: newRubros });
-    addToast(`Rubro "${config.rubros.find(r => r.key === key)?.nombre}" guardado`, 'success');
+    try {
+      await update(current.id, { rubros: newRubros });
+      addToast(`Rubro "${config.rubros.find(r => r.key === key)?.nombre}" guardado`, 'success');
+    } catch (error) {
+      addToast(error instanceof Error ? error.message : 'No se pudo guardar el rubro.', 'error');
+    }
   };
 
   const totalCumpl = calcWeightedCompliance(current.rubros, config);

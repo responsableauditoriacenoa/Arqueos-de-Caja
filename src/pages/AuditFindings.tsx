@@ -71,7 +71,7 @@ export default function AuditFindings() {
 
   // ── Handlers ──
 
-  const saveFinding = (data: FindingFormData) => {
+  const saveFinding = async (data: FindingFormData) => {
     const finding: Finding = {
       id: nextId(),
       auditoriaId: current.id,
@@ -79,31 +79,47 @@ export default function AuditFindings() {
       gravedad: data.gravedad,
       rubricaAsociada: data.rubricaAsociada as RubricKey | undefined,
     };
-    update(current.id, { hallazgos: [...current.hallazgos, finding] });
-    addToast('Hallazgo registrado', 'success');
-    findingForm.reset({ gravedad: 'media' });
-    setAddingFinding(false);
+    try {
+      await update(current.id, { hallazgos: [...current.hallazgos, finding] });
+      addToast('Hallazgo registrado', 'success');
+      findingForm.reset({ gravedad: 'media' });
+      setAddingFinding(false);
+    } catch (error) {
+      addToast(error instanceof Error ? error.message : 'No se pudo registrar el hallazgo.', 'error');
+    }
   };
 
-  const deleteFinding = (fid: string) => {
-    update(current.id, { hallazgos: current.hallazgos.filter(f => f.id !== fid) });
+  const deleteFinding = async (fid: string) => {
+    try {
+      await update(current.id, { hallazgos: current.hallazgos.filter(f => f.id !== fid) });
+    } catch (error) {
+      addToast(error instanceof Error ? error.message : 'No se pudo eliminar el hallazgo.', 'error');
+    }
   };
 
-  const saveRec = (data: RecFormData) => {
+  const saveRec = async (data: RecFormData) => {
     const rec: Recommendation = {
       id: nextId(),
       auditoriaId: current.id,
       descripcion: data.descripcion,
       hallazgoId: data.hallazgoId,
     };
-    update(current.id, { recomendaciones: [...current.recomendaciones, rec] });
-    addToast('Recomendación registrada', 'success');
-    recForm.reset();
-    setAddingRec(false);
+    try {
+      await update(current.id, { recomendaciones: [...current.recomendaciones, rec] });
+      addToast('Recomendación registrada', 'success');
+      recForm.reset();
+      setAddingRec(false);
+    } catch (error) {
+      addToast(error instanceof Error ? error.message : 'No se pudo registrar la recomendación.', 'error');
+    }
   };
 
-  const deleteRec = (rid: string) => {
-    update(current.id, { recomendaciones: current.recomendaciones.filter(r => r.id !== rid) });
+  const deleteRec = async (rid: string) => {
+    try {
+      await update(current.id, { recomendaciones: current.recomendaciones.filter(r => r.id !== rid) });
+    } catch (error) {
+      addToast(error instanceof Error ? error.message : 'No se pudo eliminar la recomendación.', 'error');
+    }
   };
 
   return (

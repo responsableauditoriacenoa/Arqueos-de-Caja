@@ -28,7 +28,9 @@ export default function History() {
 
   const companyBranches = config.sucursales.filter(b => b.empresa === config.empresa);
 
-  React.useEffect(() => { loadAll(); }, []);
+  React.useEffect(() => {
+    void loadAll();
+  }, [loadAll]);
 
   const filtered = audits.filter(a => {
     if (search && !`${a.numero} ${a.sucursalNombre} ${a.auditor} ${a.responsable}`.toLowerCase().includes(search.toLowerCase())) return false;
@@ -40,15 +42,23 @@ export default function History() {
     return true;
   });
 
-  const handleDelete = (id: string, numero: string) => {
+  const handleDelete = async (id: string, numero: string) => {
     if (!confirm(`¿Eliminar la auditoría ${numero}? Esta acción no se puede deshacer.`)) return;
-    remove(id);
-    addToast(`Auditoría ${numero} eliminada`, 'warning');
+    try {
+      await remove(id);
+      addToast(`Auditoría ${numero} eliminada`, 'warning');
+    } catch (error) {
+      addToast(error instanceof Error ? error.message : 'No se pudo eliminar la auditoría.', 'error');
+    }
   };
 
-  const handleReopen = (id: string) => {
-    update(id, { estado: 'abierta' });
-    addToast('Auditoría reabierta', 'info');
+  const handleReopen = async (id: string) => {
+    try {
+      await update(id, { estado: 'abierta' });
+      addToast('Auditoría reabierta', 'info');
+    } catch (error) {
+      addToast(error instanceof Error ? error.message : 'No se pudo reabrir la auditoría.', 'error');
+    }
   };
 
   const clearFilters = () => {

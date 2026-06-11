@@ -23,8 +23,10 @@ export default function AuditDetail() {
   const { current, loadById } = useAuditStore();
 
   React.useEffect(() => {
-    if (id) loadById(id);
-  }, [id]);
+    if (id) {
+      void loadById(id);
+    }
+  }, [id, loadById]);
 
   if (!current || current.id !== id) {
     return (

@@ -21,9 +21,9 @@ export default function Dashboard() {
   const { stats, loadStats, loadAll } = useAuditStore();
 
   React.useEffect(() => {
-    loadStats();
-    loadAll();
-  }, []);
+    void loadStats();
+    void loadAll();
+  }, [loadAll, loadStats]);
 
   if (!stats) return null;
 

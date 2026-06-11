@@ -163,7 +163,7 @@ export default function AuditSignatures() {
   const sigResponsable  = current.firmas.find(f => f.tipo === 'responsable');
   const bothSigned      = !!sigAuditor && !!sigResponsable;
 
-  const handleSave = (tipo: SignatureType, img: string, nombre: string, cargo: string) => {
+  const handleSave = async (tipo: SignatureType, img: string, nombre: string, cargo: string) => {
     const sig: Signature = {
       id: nextId(),
       auditoriaId: current.id,
@@ -174,15 +174,23 @@ export default function AuditSignatures() {
       fecha: new Date().toISOString(),
     };
     const others = current.firmas.filter(f => f.tipo !== tipo);
-    update(current.id, { firmas: [...others, sig] });
-    addToast(`Firma de ${tipo === 'auditor' ? 'auditor' : 'responsable'} registrada`, 'success');
+    try {
+      await update(current.id, { firmas: [...others, sig] });
+      addToast(`Firma de ${tipo === 'auditor' ? 'auditor' : 'responsable'} registrada`, 'success');
+    } catch (error) {
+      addToast(error instanceof Error ? error.message : 'No se pudo registrar la firma.', 'error');
+    }
   };
 
-  const handleClear = (tipo: SignatureType) => {
-    update(current.id, { firmas: current.firmas.filter(f => f.tipo !== tipo) });
+  const handleClear = async (tipo: SignatureType) => {
+    try {
+      await update(current.id, { firmas: current.firmas.filter(f => f.tipo !== tipo) });
+    } catch (error) {
+      addToast(error instanceof Error ? error.message : 'No se pudo limpiar la firma.', 'error');
+    }
   };
 
-  const closeAudit = () => {
+  const closeAudit = async () => {
     if (!bothSigned) {
       addToast('Ambas firmas son necesarias para cerrar la auditoría', 'error');
       return;
@@ -192,9 +200,13 @@ export default function AuditSignatures() {
       addToast('Debe completar al menos un rubro antes de cerrar', 'error');
       return;
     }
-    update(current.id, { estado: 'cerrada' });
-    addToast('Auditoría cerrada exitosamente', 'success');
-    navigate(`/auditoria/${current.id}/informe`);
+    try {
+      await update(current.id, { estado: 'cerrada' });
+      addToast('Auditoría cerrada exitosamente', 'success');
+      navigate(`/auditoria/${current.id}/informe`);
+    } catch (error) {
+      addToast(error instanceof Error ? error.message : 'No se pudo cerrar la auditoría.', 'error');
+    }
   };
 
   return (

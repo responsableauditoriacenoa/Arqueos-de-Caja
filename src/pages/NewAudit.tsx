@@ -76,15 +76,19 @@ export default function NewAudit() {
 
   const goPrev = () => setStep(s => s - 1);
 
-  const onSubmit = (data: FormData, status: 'borrador' | 'abierta') => {
+  const onSubmit = async (data: FormData, status: 'borrador' | 'abierta') => {
     const branch = activeBranches.find(b => b.id === data.sucursalId);
-    const audit = create({
-      ...data,
-      sucursalNombre: branch?.nombre ?? '',
-      estado: status,
-    });
-    addToast(`Auditoría ${audit.numero} creada correctamente`, 'success');
-    navigate(`/auditoria/${audit.id}`);
+    try {
+      const audit = await create({
+        ...data,
+        sucursalNombre: branch?.nombre ?? '',
+        estado: status,
+      });
+      addToast(`Auditoría ${audit.numero} creada correctamente`, 'success');
+      navigate(`/auditoria/${audit.id}`);
+    } catch (error) {
+      addToast(error instanceof Error ? error.message : 'No se pudo crear la auditoría.', 'error');
+    }
   };
 
   return (

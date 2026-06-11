@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { Audit, AppConfig } from '../types';
+import { DEFAULT_CONFIG } from '../constants';
 import {
   getAllAudits,
   getAuditById,
@@ -19,13 +20,14 @@ interface AuditState {
   current:   Audit | null;
   stats:     DashboardStats | null;
   loading:   boolean;
+  error:     string | null;
 
-  loadAll:    () => void;
-  loadById:   (id: string) => void;
-  loadStats:  () => void;
-  create:     (data: Partial<Audit>) => Audit;
-  update:     (id: string, changes: Partial<Audit>) => Audit | null;
-  remove:     (id: string) => void;
+  loadAll:    () => Promise<void>;
+  loadById:   (id: string) => Promise<void>;
+  loadStats:  () => Promise<void>;
+  create:     (data: Partial<Audit>) => Promise<Audit>;
+  update:     (id: string, changes: Partial<Audit>) => Promise<Audit | null>;
+  remove:     (id: string) => Promise<void>;
   setCurrent: (audit: Audit | null) => void;
 }
 
@@ -34,44 +36,60 @@ export const useAuditStore = create<AuditState>((set) => ({
   current: null,
   stats:   null,
   loading: false,
+  error:   null,
 
-  loadAll: () => {
-    set({ loading: true });
-    const audits = getAllAudits();
-    set({ audits, loading: false });
+  loadAll: async () => {
+    set({ loading: true, error: null });
+    try {
+      const audits = await getAllAudits();
+      set({ audits, loading: false });
+    } catch (error) {
+      set({ loading: false, error: error instanceof Error ? error.message : 'Error al cargar auditorias.' });
+    }
   },
 
-  loadById: (id) => {
-    const current = getAuditById(id) ?? null;
-    set({ current });
+  loadById: async (id) => {
+    set({ loading: true, error: null });
+    try {
+      const current = await getAuditById(id);
+      set({ current: current ?? null, loading: false });
+    } catch (error) {
+      set({ current: null, loading: false, error: error instanceof Error ? error.message : 'Error al cargar auditoria.' });
+    }
   },
 
-  loadStats: () => {
-    const stats = getDashboardStats();
-    set({ stats });
+  loadStats: async () => {
+    try {
+      const stats = await getDashboardStats();
+      set({ stats, error: null });
+    } catch (error) {
+      set({ error: error instanceof Error ? error.message : 'Error al cargar estadisticas.' });
+    }
   },
 
-  create: (data) => {
-    const audit = createAudit(data);
-    set(s => ({ audits: [audit, ...s.audits], current: audit }));
+  create: async (data) => {
+    const audit = await createAudit(data);
+    set((state) => ({ audits: [audit, ...state.audits], current: audit, error: null }));
     return audit;
   },
 
-  update: (id, changes) => {
-    const updated = updateAudit(id, changes);
+  update: async (id, changes) => {
+    const updated = await updateAudit(id, changes);
     if (!updated) return null;
-    set(s => ({
-      audits:  s.audits.map(a => a.id === id ? updated : a),
-      current: s.current?.id === id ? updated : s.current,
+    set((state) => ({
+      audits:  state.audits.map((audit) => audit.id === id ? updated : audit),
+      current: state.current?.id === id ? updated : state.current,
+      error: null,
     }));
     return updated;
   },
 
-  remove: (id) => {
-    deleteAudit(id);
-    set(s => ({
-      audits:  s.audits.filter(a => a.id !== id),
-      current: s.current?.id === id ? null : s.current,
+  remove: async (id) => {
+    await deleteAudit(id);
+    set((state) => ({
+      audits:  state.audits.filter((audit) => audit.id !== id),
+      current: state.current?.id === id ? null : state.current,
+      error: null,
     }));
   },
 
@@ -82,20 +100,24 @@ export const useAuditStore = create<AuditState>((set) => ({
 
 interface ConfigState {
   config: AppConfig;
-  loadConfig:  () => void;
-  updateConfig: (cfg: AppConfig) => void;
+  loading: boolean;
+  loadConfig:  () => Promise<void>;
+  updateConfig: (cfg: AppConfig) => Promise<void>;
 }
 
 export const useConfigStore = create<ConfigState>((set) => ({
-  config: getConfig(),
+  config: DEFAULT_CONFIG,
+  loading: false,
 
-  loadConfig: () => {
-    set({ config: getConfig() });
+  loadConfig: async () => {
+    set({ loading: true });
+    const config = await getConfig();
+    set({ config, loading: false });
   },
 
-  updateConfig: (cfg) => {
-    saveConfig(cfg);
-    set({ config: cfg });
+  updateConfig: async (cfg) => {
+    const config = await saveConfig(cfg);
+    set({ config, loading: false });
   },
 }));
 
