@@ -40,6 +40,8 @@ on conflict (scope) do nothing;
 create or replace function public.next_audit_number()
 returns text
 language plpgsql
+security definer
+set search_path = public
 as $$
 declare
   next_value integer;
