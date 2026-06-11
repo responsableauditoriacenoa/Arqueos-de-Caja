@@ -38,7 +38,7 @@ const STEPS = [
 const AUDITOR_OPTIONS = [
   'Auditor Externo',
   'Luis Palacios',
-  'Gustazo Zambrano',
+  'Gustavo Zambrano',
   'Nancy Fernandez',
   'Diego Guantay',
 ];
